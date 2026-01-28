@@ -13,22 +13,22 @@ N_TX = int(os.getenv("N_TRANSACTIONS", "100"))
 TEST_PAYMENT_METHOD = os.getenv("STRIPE_TEST_PAYMENT_METHOD", "pm_card_visa")
 
 def create_one_payment() -> str:
-    """
-    Creates and confirms a PaymentIntent in Stripe test mode.
-    This results in a successful payment (a "transaction") you can sync downstream.
-    """
-    amount_cents = random.choice([499, 999, 1499, 2999, 4999])  # vary amounts
+    amount_cents = random.choice([499, 999, 1499, 2999, 4999])
 
     intent = stripe.PaymentIntent.create(
         amount=amount_cents,
         currency=CURRENCY,
         payment_method=TEST_PAYMENT_METHOD,
-        confirm=True,  # create + confirm in one call
-        description="dbt course synthetic transaction",
-        metadata={
-            "generator": "github-actions",
-            "course": "dbt",
+        confirm=True,
+
+        # 🔽 This avoids the "must provide return_url" error
+        automatic_payment_methods={
+            "enabled": True,
+            "allow_redirects": "never",
         },
+
+        description="dbt course synthetic transaction",
+        metadata={"generator": "github-actions", "course": "dbt"},
     )
     return intent.id
 
