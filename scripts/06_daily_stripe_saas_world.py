@@ -13,11 +13,10 @@ import stripe
 STATE_DIR = Path(os.getenv("STATE_DIR", "state"))
 STATE_FILE = STATE_DIR / "world.json"
 
-# New customers per day
 NEW_CUSTOMERS_MIN = int(os.getenv("NEW_CUSTOMERS_MIN", "100"))
 NEW_CUSTOMERS_MAX = int(os.getenv("NEW_CUSTOMERS_MAX", "500"))
 
-# Failure rate is randomized each run between 2% and 12%
+# Failure rate randomized each run between 2% and 12%
 FAIL_RATE_MIN = float(os.getenv("FAIL_RATE_MIN", "0.02"))
 FAIL_RATE_MAX = float(os.getenv("FAIL_RATE_MAX", "0.12"))
 
@@ -25,7 +24,7 @@ FAIL_RATE_MAX = float(os.getenv("FAIL_RATE_MAX", "0.12"))
 EU_SHARE = float(os.getenv("EU_SHARE", "0.80"))  # 80% EU / EUR
 US_SHARE = 1.0 - EU_SHARE
 
-# Churn knobs for subscriptions (applies to active subscriptions)
+# Churn knobs for existing subscriptions
 DAILY_CHURN_RATE = float(os.getenv("DAILY_CHURN_RATE", "0.003"))
 CHURN_MODE = os.getenv("CHURN_MODE", "period_end")  # period_end | immediate
 
@@ -34,11 +33,10 @@ ENABLE_PLAN_CHANGES = os.getenv("ENABLE_PLAN_CHANGES", "false").lower() == "true
 DAILY_PLAN_CHANGE_RATE = float(os.getenv("DAILY_PLAN_CHANGE_RATE", "0.001"))
 
 # API pacing
-SLEEP_BETWEEN_CALLS_SEC = float(os.getenv("SLEEP_BETWEEN_CALLS_SEC", "0.04"))
+SLEEP_BETWEEN_CALLS_SEC = float(os.getenv("SLEEP_BETWEEN_CALLS_SEC", "0.05"))
 MAX_EXISTING_ACTIVE_TO_MUTATE = int(os.getenv("MAX_EXISTING_ACTIVE_TO_MUTATE", "200"))
 
-# Plan definitions
-# Monthly plans available in BOTH currencies (EUR and USD) for geo split
+# Monthly plans available in BOTH currencies (EUR and USD)
 MONTHLY_PLANS = {
     "Basic": {"eur": 999, "usd": 1099},
     "Standard": {"eur": 1999, "usd": 2199},
@@ -46,10 +44,10 @@ MONTHLY_PLANS = {
     "Exec": {"eur": 4999, "usd": 5499},
 }
 
-# Weekly plan ONLY in EUR for speed (EU-only), per your request
+# Weekly plan ONLY in EUR (to see renewals faster)
 WEEKLY_PLAN = {"Weekly": {"eur": 299}}
 
-# Weights for plan assignment (monthly)
+# Weights for monthly plan assignment
 PLAN_WEIGHTS = {
     "Basic": 0.55,
     "Standard": 0.25,
@@ -58,32 +56,32 @@ PLAN_WEIGHTS = {
 }
 
 # -----------------------
-# Test card pools (numbers -> random last4)
+# Payment method mix (clean Stripe-recommended tokens)
 # -----------------------
-# SUCCESS cards (mix of brands) — these are standard Stripe test numbers.
-SUCCESS_CARDS = [
-    ("visa", "4242424242424242"),
-    ("visa", "4012888888881881"),
-    ("visa_debit", "4000056655665556"),
-    ("mastercard", "5555555555554444"),
-    ("mastercard", "5105105105105100"),
-    ("amex", "378282246310005"),
-    ("discover", "6011111111111117"),
-    ("jcb", "3530111333300000"),
+# NOTE: last4 will be fixed per token (Stripe limitation).
+# This is the clean approach and does not require raw card data APIs.
+SUCCESS_PM_TOKENS = [
+    ("visa", "tok_visa"),
+    ("mastercard", "tok_mastercard"),
+    ("amex", "tok_amex"),
+    ("discover", "tok_discover"),
+    ("jcb", "tok_jcb"),
 ]
 
-# FAIL cards — used to produce a failed payment attempt (declined/insufficient funds)
-# These are also standard Stripe test numbers.
-FAIL_CARDS = [
-    ("declined", "4000000000000002"),
-    ("insufficient_funds", "4000000000009995"),
-]
+# Weight the mix (mostly Visa + Mastercard)
+PM_WEIGHTS = {
+    "visa": 0.50,
+    "mastercard": 0.40,
+    "amex": 0.05,
+    "discover": 0.03,
+    "jcb": 0.02,
+}
 
 # -----------------------
 # Helpers
 # -----------------------
 def utc_today_date_str() -> str:
-    # used in customer naming pattern
+    # For customer naming: yyyy_mm_dd
     return datetime.now(timezone.utc).strftime("%Y_%m_%d")
 
 def utc_today_iso() -> str:
@@ -96,11 +94,11 @@ def load_state() -> dict:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     if not STATE_FILE.exists():
         return {
-            "schema_version": 3,
+            "schema_version": 5,
             "created_at": utc_today_iso(),
-            "plans": {},         # key: plan_key -> {"product_id":..., "price_id":...}
-            "customers": {},     # customer_id -> {...}
-            "subscriptions": {}, # subscription_id -> {...}
+            "plans": {},
+            "customers": {},
+            "subscriptions": {},
             "last_run_date": None,
         }
     return json.loads(STATE_FILE.read_text())
@@ -112,19 +110,11 @@ def stripe_sleep():
     time.sleep(SLEEP_BETWEEN_CALLS_SEC)
 
 def with_retries(fn, *, max_attempts=5, base_sleep=0.5):
-    """
-    Simple retry wrapper for transient Stripe errors / rate limits.
-    """
     attempt = 0
     while True:
         try:
             return fn()
-        except stripe.error.RateLimitError:
-            attempt += 1
-            if attempt >= max_attempts:
-                raise
-            time.sleep(base_sleep * (2 ** (attempt - 1)))
-        except stripe.error.APIConnectionError:
+        except (stripe.error.RateLimitError, stripe.error.APIConnectionError):
             attempt += 1
             if attempt >= max_attempts:
                 raise
@@ -150,16 +140,7 @@ def find_price_for_product(product_id: str, unit_amount: int, currency: str, int
     return None
 
 def ensure_catalog(state: dict) -> dict:
-    """
-    Ensure:
-      - monthly plans exist in EUR and USD
-      - weekly plan exists in EUR
-    Stored price keys:
-      - monthly_basic_eur
-      - monthly_basic_usd
-      - weekly_weekly_eur
-    """
-    # Monthly (EUR+USD)
+    # Monthly plans (EUR+USD)
     for plan, amounts in MONTHLY_PLANS.items():
         product_name = f"DAH Music – {plan} (Monthly)"
         product = find_product_by_name(product_name)
@@ -181,15 +162,9 @@ def ensure_catalog(state: dict) -> dict:
                     metadata={"domain": "music_streaming", "dah_plan": plan, "cadence": "monthly"},
                 ))
             key = f"monthly_{plan.lower()}_{currency}"
-            state["plans"][key] = {
-                "product_id": product.id,
-                "price_id": price.id,
-                "amount": amount,
-                "currency": currency,
-                "interval": "month",
-            }
+            state["plans"][key] = {"product_id": product.id, "price_id": price.id, "amount": amount, "currency": currency, "interval": "month"}
 
-    # Weekly (EUR only)
+    # Weekly plan (EUR only)
     for plan, amounts in WEEKLY_PLAN.items():
         product_name = f"DAH Music – {plan} (Weekly)"
         product = find_product_by_name(product_name)
@@ -211,31 +186,17 @@ def ensure_catalog(state: dict) -> dict:
                 metadata={"domain": "music_streaming", "dah_plan": plan, "cadence": "weekly"},
             ))
         key = "weekly_weekly_eur"
-        state["plans"][key] = {
-            "product_id": product.id,
-            "price_id": price.id,
-            "amount": amount,
-            "currency": "eur",
-            "interval": "week",
-        }
+        state["plans"][key] = {"product_id": product.id, "price_id": price.id, "amount": amount, "currency": "eur", "interval": "week"}
 
     return state
 
 def pick_geo() -> tuple[str, str]:
-    # 80% EU/EUR, 20% US/USD
-    if random.random() < EU_SHARE:
-        return ("EU", "eur")
-    return ("US", "usd")
+    return ("EU", "eur") if random.random() < EU_SHARE else ("US", "usd")
 
 def pick_plan_for_customer(region: str) -> tuple[str, str]:
-    """
-    Returns (cadence, plan_name).
-    Weekly is EU-only and injected to speed up renewals.
-    """
-    if region == "EU":
-        # 12% weekly among EU customers (tunable)
-        if random.random() < 0.12:
-            return ("weekly", "Weekly")
+    # Speed: a portion of EU customers get weekly
+    if region == "EU" and random.random() < 0.12:
+        return ("weekly", "Weekly")
 
     plans = list(PLAN_WEIGHTS.keys())
     weights = list(PLAN_WEIGHTS.values())
@@ -246,14 +207,21 @@ def price_key_for(cadence: str, plan: str, currency: str) -> str:
         return "weekly_weekly_eur"
     return f"monthly_{plan.lower()}_{currency}"
 
+def weighted_pick_payment_token() -> tuple[str, str]:
+    brands = list(PM_WEIGHTS.keys())
+    weights = [PM_WEIGHTS[b] for b in brands]
+    brand = random.choices(brands, weights=weights, k=1)[0]
+    # Find a token for that brand
+    for b, tok in SUCCESS_PM_TOKENS:
+        if b == brand:
+            return (b, tok)
+    # Fallback
+    return random.choice(SUCCESS_PM_TOKENS)
+
 def create_customer(run_date_yyyy_mm_dd: str, n: int, region: str, currency: str) -> str:
-    """
-    Customer name pattern required:
-      dah_user_yyyy_mm_dd_#N
-    """
+    # Pattern required: dah_user_yyyy_mm_dd_#N
     name = f"dah_user_{run_date_yyyy_mm_dd}_#{n}"
     email = f"{name}@example.com"
-
     address = {"country": "FR"} if region == "EU" else {"country": "US"}
 
     c = with_retries(lambda: stripe.Customer.create(
@@ -266,61 +234,31 @@ def create_customer(run_date_yyyy_mm_dd: str, n: int, region: str, currency: str
             "cohort_date": run_date_yyyy_mm_dd,
             "region": region,
             "currency": currency,
-            "user_handle": name,
         },
     ))
     return c.id
 
-def create_card_token(card_number: str) -> str:
+def attach_default_payment_method(customer_id: str) -> tuple[str, str]:
     """
-    Create a Token from a test card number so we get random last4 (realistic variety).
-    Using secret key is OK in test mode for server-side token creation.
-    """
-    exp_month = random.randint(1, 12)
-    exp_year = random.randint(2028, 2033)
-    cvc = str(random.randint(100, 999))
+    Clean Stripe approach:
+      - create a new PaymentMethod from a test token
+      - attach it to the customer
+      - set as default
+    Returns (payment_method_id, brand_label)
 
-    tok = with_retries(lambda: stripe.Token.create(
-        card={
-            "number": card_number,
-            "exp_month": exp_month,
-            "exp_year": exp_year,
-            "cvc": cvc,
-        }
+    NOTE: last4 will be token-specific (Stripe limitation).
+    """
+    brand_label, token = weighted_pick_payment_token()
+
+    pm = with_retries(lambda: stripe.PaymentMethod.create(
+        type="card",
+        card={"token": token},
+        metadata={"generator": "daily", "domain": "music_streaming", "brand": brand_label},
     ))
-    return tok.id
 
-def attach_default_payment_method(customer_id: str, *, should_fail: bool) -> tuple[str, str, str]:
-    """
-    Creates a fresh PaymentMethod per customer (required) with randomized last4.
-    We do NOT let attach failures crash the run.
-
-    Returns: (payment_method_id, card_brand_label, card_number)
-    """
-    if should_fail:
-        card_brand_label, card_number = random.choice(FAIL_CARDS)
-    else:
-        card_brand_label, card_number = random.choice(SUCCESS_CARDS)
-
-    def _create_attach_set_default(number: str, label: str) -> tuple[str, str, str]:
-        token_id = create_card_token(number)
-        pm = with_retries(lambda: stripe.PaymentMethod.create(
-            type="card",
-            card={"token": token_id},
-            metadata={"generator": "daily", "card_brand": label, "domain": "music_streaming"},
-        ))
-        # Attach
-        with_retries(lambda: stripe.PaymentMethod.attach(pm.id, customer=customer_id))
-        # Set as default
-        with_retries(lambda: stripe.Customer.modify(customer_id, invoice_settings={"default_payment_method": pm.id}))
-        return (pm.id, label, number)
-
-    try:
-        return _create_attach_set_default(card_number, card_brand_label)
-    except stripe.error.CardError:
-        # Some failing cards can error earlier than intended; fallback to a successful card
-        fb_label, fb_number = random.choice(SUCCESS_CARDS)
-        return _create_attach_set_default(fb_number, fb_label)
+    with_retries(lambda: stripe.PaymentMethod.attach(pm.id, customer=customer_id))
+    with_retries(lambda: stripe.Customer.modify(customer_id, invoice_settings={"default_payment_method": pm.id}))
+    return (pm.id, brand_label)
 
 def create_subscription(customer_id: str, price_id: str, cadence: str, plan: str, currency: str, region: str, run_date: str) -> str:
     s = with_retries(lambda: stripe.Subscription.create(
@@ -342,11 +280,9 @@ def create_subscription(customer_id: str, price_id: str, cadence: str, plan: str
 
 def pay_latest_invoice_for_subscription(subscription_id: str) -> tuple[bool, str]:
     """
-    Best-effort payment attempt:
-    - Retrieve subscription with latest_invoice.payment_intent expanded
-    - Confirm PI (disallow redirects)
-    - Return (success, status)
-    Never crashes the run; failures are returned as False.
+    Best-effort attempt to confirm the latest invoice's PaymentIntent.
+    Returns (ok, status).
+    Never crashes the run.
     """
     try:
         sub = with_retries(lambda: stripe.Subscription.retrieve(subscription_id, expand=["latest_invoice.payment_intent"]))
@@ -367,7 +303,6 @@ def pay_latest_invoice_for_subscription(subscription_id: str) -> tuple[bool, str
         return (pi2.status == "succeeded", pi2.status)
 
     except (stripe.error.CardError, stripe.error.StripeError) as e:
-        # Record as failed payment attempt, don't kill the run.
         return (False, getattr(e, "code", "error"))
 
 def maybe_churn_subscription(subscription_id: str) -> bool:
@@ -408,7 +343,7 @@ def maybe_change_plan(subscription_id: str, current_plan: str, current_currency:
     ))
     return new_plan
 
-def list_active_music_subscriptions(limit: int = 200):
+def list_active_music_subscriptions(limit: int):
     subs = with_retries(lambda: stripe.Subscription.list(status="active", limit=limit)).data
     return [s for s in subs if (s.metadata or {}).get("domain") == "music_streaming"]
 
@@ -419,14 +354,13 @@ def main():
     init_stripe()
     state = load_state()
     run_date = utc_today_iso()
-    run_date_key = utc_today_date_str()  # yyyy_mm_dd
+    run_date_key = utc_today_date_str()
 
+    # Randomize today's failure target between 2% and 12%
     failure_rate_today = random.uniform(FAIL_RATE_MIN, FAIL_RATE_MAX)
 
-    # 1) Ensure catalog exists
     state = ensure_catalog(state)
 
-    # 2) Create new customers + subscriptions
     n_new = random.randint(NEW_CUSTOMERS_MIN, NEW_CUSTOMERS_MAX)
     print(f"[{run_date}] Creating {n_new} new customers | target failure rate ~{failure_rate_today:.2%}")
 
@@ -444,37 +378,35 @@ def main():
             us_count += 1
 
         cadence, plan = pick_plan_for_customer(region)
-
-        # weekly is EU/EUR only
         if cadence == "weekly":
             region = "EU"
             currency = "eur"
 
-        # Decide failure for initial payment attempt
         should_fail = random.random() < failure_rate_today
 
-        # Create customer with required naming
         cid = create_customer(run_date_key, n, region, currency)
 
-        # Attach a randomized payment method (random last4), never crashes the run
-        pm_id, card_label, card_number = attach_default_payment_method(cid, should_fail=should_fail)
+        # Failure strategy (clean + robust):
+        # - If should_fail: do NOT attach a default payment method
+        #   -> invoice/payment intent will require a PM => unpaid/failed attempt.
+        # - Else: attach a normal payment method (brand mix).
+        pm_id = None
+        pm_brand = None
+        if not should_fail:
+            pm_id, pm_brand = attach_default_payment_method(cid)
 
-        # Determine price
         pkey = price_key_for(cadence, plan, currency)
         price_id = state["plans"][pkey]["price_id"]
 
-        # Create subscription
         sid = create_subscription(cid, price_id, cadence, plan, currency, region, run_date)
         created_subs += 1
 
-        # Force a payment attempt so we get measurable success/failure today
         ok, status = pay_latest_invoice_for_subscription(sid)
         if ok:
             successes += 1
         else:
             failures += 1
 
-        # Save state (debug-friendly)
         state["customers"][cid] = {
             "created_date": run_date,
             "region": region,
@@ -483,8 +415,7 @@ def main():
             "cadence": cadence,
             "subscription_id": sid,
             "payment_method_id": pm_id,
-            "card_label": card_label,
-            "card_number": card_number,
+            "payment_method_brand": pm_brand,
             "initial_payment_target_fail": should_fail,
             "initial_payment_result": "success" if ok else "fail",
             "initial_payment_status": status,
@@ -502,7 +433,7 @@ def main():
 
         stripe_sleep()
 
-    # 3) Mutate existing active subs (churn + optional plan changes)
+    # Mutate existing subscriptions (churn + optional plan changes)
     existing_active = list_active_music_subscriptions(limit=MAX_EXISTING_ACTIVE_TO_MUTATE)
     churned = 0
     changed = 0
