@@ -1,0 +1,44 @@
+name: Stripe - daily customers & subscriptions (+ optional churn)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "10 3 * * *" # daily 03:10 UTC
+
+concurrency:
+  group: stripe-daily
+  cancel-in-progress: true
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONPATH: stripe/scripts
+      DAH_STATE_DIR: stripe/state
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+      # knobs (adjust anytime)
+      N_NEW_CUSTOMERS: "30"
+      N_CHURN_EVENTS: "5"
+      CHURN_MODE: "period_end"     # period_end | immediate
+      STRIPE_TEST_PAYMENT_METHOD: "pm_card_visa"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r stripe/scripts/requirements.txt
+
+      - name: Ensure catalog exists (idempotent)
+        run: python stripe/scripts/00_create_catalog.py
+
+      - name: Create daily customers + subscriptions + churn
+        run: python stripe/scripts/06_daily_customers_subscriptions_churn.py
