@@ -1,26 +1,28 @@
-name: Stripe - daily customers & subscriptions (+ optional churn)
+name: Stripe - daily SaaS generator
 
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "10 3 * * *" # daily 03:10 UTC
+    - cron: "10 3 * * *" # runs daily at 03:10 UTC
 
 concurrency:
   group: stripe-daily
   cancel-in-progress: true
 
 jobs:
-  daily:
+  run:
     runs-on: ubuntu-latest
 
     env:
       PYTHONPATH: scripts
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
 
-      # knobs
-      N_NEW_CUSTOMERS: "30"
-      N_CHURN_EVENTS: "5"
-      CHURN_MODE: "period_end"  # or "immediate"
+      # --- knobs you can tune ---
+      NEW_CUSTOMERS_MIN: "100"
+      NEW_CUSTOMERS_MAX: "500"
+      DAILY_CHURN_RATE: "0.003"
+      CHURN_MODE: "period_end"
+      ENABLE_PLAN_CHANGES: "false"
       STRIPE_TEST_PAYMENT_METHOD: "pm_card_visa"
 
     steps:
@@ -36,8 +38,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Ensure catalog exists (idempotent)
-        run: python scripts/00_create_catalog.py
-
-      - name: Daily customers + subscriptions + churn
-        run: python scripts/06_daily_customers_subscriptions_churn.py
+      - name: Run daily generator
+        run: python scripts/06_daily_stripe_saas_world.py
