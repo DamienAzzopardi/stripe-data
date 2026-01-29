@@ -236,18 +236,26 @@ def create_customer(run_date_yyyy_mm_dd: str, n: int, region: str, currency: str
 
 def attach_default_payment_method(customer_id: str, card_token: str, card_brand_label: str) -> str:
     """
-    Creates a fresh PaymentMethod per customer (required).
-    Uses Stripe test tokens (tok_visa, tok_mastercard, etc.).
-    Returns payment_method_id.
+    Creates a fresh PaymentMethod per customer.
+    If a failing token triggers a CardError at attach time, fall back to a success PM.
+    This ensures the generator run never crashes, while failures are handled at payment time.
     """
-    pm = stripe.PaymentMethod.create(
-        type="card",
-        card={"token": card_token},
-        metadata={"generator": "daily", "card_brand": card_brand_label, "domain": "music_streaming"},
-    )
-    stripe.PaymentMethod.attach(pm.id, customer=customer_id)
-    stripe.Customer.modify(customer_id, invoice_settings={"default_payment_method": pm.id})
-    return pm.id
+    def _create_and_attach(token: str, label: str) -> str:
+        pm = stripe.PaymentMethod.create(
+            type="card",
+            card={"token": token},
+            metadata={"generator": "daily", "card_brand": label, "domain": "music_streaming"},
+        )
+        stripe.PaymentMethod.attach(pm.id, customer=customer_id)
+        stripe.Customer.modify(customer_id, invoice_settings={"default_payment_method": pm.id})
+        return pm.id
+
+    try:
+        return _create_and_attach(card_token, card_brand_label)
+    except stripe.error.CardError:
+        # Failing card tokens can error earlier than expected; fallback so run continues.
+        fallback_label, fallback_token = random.choice(SUCCESS_CARD_TOKENS)
+        return _create_and_attach(fallback_token, fallback_label)
 
 def price_key_for(cadence: str, plan: str, currency: str) -> str:
     if cadence == "weekly":
