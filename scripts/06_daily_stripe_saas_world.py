@@ -125,9 +125,17 @@ def ensure_catalog(state: dict) -> dict:
     return state
 
 def attach_default_payment_method(customer_id: str):
-    # Attach a standard test card and set as default for invoices
-    stripe.PaymentMethod.attach(TEST_PM, customer=customer_id)
-    stripe.Customer.modify(customer_id, invoice_settings={"default_payment_method": TEST_PM})
+    """
+    IMPORTANT:
+    A PaymentMethod (pm_...) cannot be attached to multiple customers.
+    So we must create a fresh test PaymentMethod per customer, then attach it.
+    """
+    pm = stripe.PaymentMethod.create(
+        type="card",
+        card={"token": "tok_visa"},  # test token, creates a new reusable PM
+    )
+    stripe.PaymentMethod.attach(pm.id, customer=customer_id)
+    stripe.Customer.modify(customer_id, invoice_settings={"default_payment_method": pm.id})
 
 def create_customer(i: int, run_date: str) -> str:
     # Use run_date in email for easier debugging
