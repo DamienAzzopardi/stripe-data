@@ -39,9 +39,9 @@ import stripe
 # ----------------------------
 
 PLAN_RANGES = {
-    "weekly": (0.35, 0.45),
-    "monthly": (0.25, 0.35),
-    "yearly": (0.10, 0.20),
+    "weekly": (0.35, 0.55),
+    "monthly": (0.25, 0.40),
+    "yearly": (0.10, 0.25),
 }
 
 EU_COUNTRIES = ["FR", "ES", "IT"]
