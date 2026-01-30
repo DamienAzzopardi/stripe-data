@@ -33,7 +33,7 @@ jobs:
           PRICE_MONTHLY_USD: ${{ secrets.PRICE_MONTHLY_USD }}
           PRICE_YEARLY_USD: ${{ secrets.PRICE_YEARLY_USD }}
         run: |
-          python 06_daily_stripe_saas_world.py
+          python scripts/06_daily_stripe_saas_world.py
 
       - name: Upload run artifacts
         uses: actions/upload-artifact@v4
