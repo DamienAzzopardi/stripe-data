@@ -30,7 +30,7 @@ jobs:
 
       - name: Run generator
         env:
-          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_TEST_CLOCK_ID: ${{ secrets.STRIPE_TEST_CLOCK_ID }}
           PRICE_WEEKLY_EUR: ${{ secrets.PRICE_WEEKLY_EUR }}
           PRICE_MONTHLY_EUR: ${{ secrets.PRICE_MONTHLY_EUR }}
