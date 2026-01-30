@@ -1,0 +1,42 @@
+name: Daily Stripe Fitness Generator
+
+on:
+  schedule:
+    - cron: "0 5 * * *"  # 05:00 UTC daily (GitHub Actions cron is UTC)
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install stripe
+
+      - name: Run generator
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_TEST_CLOCK_ID: ${{ secrets.STRIPE_TEST_CLOCK_ID }}
+          PRICE_WEEKLY_EUR: ${{ secrets.PRICE_WEEKLY_EUR }}
+          PRICE_MONTHLY_EUR: ${{ secrets.PRICE_MONTHLY_EUR }}
+          PRICE_YEARLY_EUR: ${{ secrets.PRICE_YEARLY_EUR }}
+          PRICE_WEEKLY_USD: ${{ secrets.PRICE_WEEKLY_USD }}
+          PRICE_MONTHLY_USD: ${{ secrets.PRICE_MONTHLY_USD }}
+          PRICE_YEARLY_USD: ${{ secrets.PRICE_YEARLY_USD }}
+        run: |
+          python 06_daily_stripe_saas_world.py
+
+      - name: Upload run artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: run_artifacts
+          path: run_artifacts/
