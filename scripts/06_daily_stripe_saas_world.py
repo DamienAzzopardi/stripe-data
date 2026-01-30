@@ -104,18 +104,35 @@ def price_id_for(plan: str, currency: str) -> str:
 
 def generate_daily_plan_weights() -> Dict[str, float]:
     """
-    Pick random weights within ranges that sum to 1.0.
-    - sample weekly & monthly within ranges
-    - set yearly = 1 - weekly - monthly
-    - if yearly out of range, resample
+    Always produce valid weights within ranges that sum to 1.0.
+
+    Strategy:
+    1) Sample yearly within its range
+    2) The remaining mass (1 - yearly) must be split between weekly & monthly
+       while staying within their ranges.
     """
+    y_lo, y_hi = PLAN_RANGES["yearly"]
+    w_lo, w_hi = PLAN_RANGES["weekly"]
+    m_lo, m_hi = PLAN_RANGES["monthly"]
+
     for _ in range(10_000):
-        w = random.uniform(*PLAN_RANGES["weekly"])
-        m = random.uniform(*PLAN_RANGES["monthly"])
-        y = 1.0 - w - m
-        if PLAN_RANGES["yearly"][0] <= y <= PLAN_RANGES["yearly"][1]:
-            total = w + m + y
-            return {"weekly": w / total, "monthly": m / total, "yearly": y / total}
+        y = random.uniform(y_lo, y_hi)
+        remaining = 1.0 - y
+
+        # Weekly must be within [w_lo, w_hi]
+        # Monthly = remaining - weekly must be within [m_lo, m_hi]
+        w_min = max(w_lo, remaining - m_hi)
+        w_max = min(w_hi, remaining - m_lo)
+
+        if w_min <= w_max:
+            w = random.uniform(w_min, w_max)
+            m = remaining - w
+
+            # Final sanity guard
+            if (w_lo <= w <= w_hi) and (m_lo <= m <= m_hi) and (y_lo <= y <= y_hi):
+                total = w + m + y
+                return {"weekly": w / total, "monthly": m / total, "yearly": y / total}
+
     raise RuntimeError("Could not generate valid plan weights within ranges.")
 
 
