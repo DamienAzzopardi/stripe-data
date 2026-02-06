@@ -443,8 +443,11 @@ def process_decision_points_for_today(
         if md.get("generator") != "dah_fitness":
             continue
 
-        end_ts = int(sub.current_period_end)
-        end_date_local = ts_to_local_date(end_ts, tz)
+        end_ts = getattr(sub, "current_period_end", None)
+        if end_ts is None:
+            continue
+
+        end_date_local = ts_to_local_date(int(end_ts), tz)
 
         if end_date_local.isoformat() != run_date:
             continue
