@@ -1,0 +1,459 @@
+catalog:
+  smartphones:
+    # iPhones (dominate refurbished volume)
+    - brand: Apple
+      model: iPhone 14
+      popularity_weight: 0.11
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 79900
+        - grade: B
+          storage: 128GB
+          price: 73900
+        - grade: C
+          storage: 128GB
+          price: 67900
+
+    - brand: Apple
+      model: iPhone 13
+      popularity_weight: 0.13
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 72900
+        - grade: B
+          storage: 128GB
+          price: 66900
+        - grade: C
+          storage: 128GB
+          price: 60900
+
+    - brand: Apple
+      model: iPhone 12
+      popularity_weight: 0.16
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 64900
+        - grade: B
+          storage: 128GB
+          price: 58900
+        - grade: C
+          storage: 128GB
+          price: 52900
+
+    - brand: Apple
+      model: iPhone 11
+      popularity_weight: 0.10
+      variants:
+        - grade: B
+          storage: 64GB
+          price: 45900
+        - grade: C
+          storage: 64GB
+          price: 40900
+
+    - brand: Apple
+      model: iPhone SE (2022)
+      popularity_weight: 0.06
+      variants:
+        - grade: A
+          storage: 64GB
+          price: 36900
+        - grade: B
+          storage: 64GB
+          price: 32900
+
+    - brand: Apple
+      model: iPhone XR
+      popularity_weight: 0.03
+      variants:
+        - grade: B
+          storage: 64GB
+          price: 26900
+        - grade: C
+          storage: 64GB
+          price: 22900
+
+    # Samsung flagships + A-series (A-series huge in volume)
+    - brand: Samsung
+      model: Galaxy S22
+      popularity_weight: 0.05
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 57900
+        - grade: B
+          storage: 128GB
+          price: 52900
+
+    - brand: Samsung
+      model: Galaxy S21
+      popularity_weight: 0.05
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 51900
+        - grade: B
+          storage: 128GB
+          price: 46900
+
+    - brand: Samsung
+      model: Galaxy A54
+      popularity_weight: 0.05
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 33900
+        - grade: B
+          storage: 128GB
+          price: 29900
+
+    - brand: Samsung
+      model: Galaxy A53
+      popularity_weight: 0.05
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 30900
+        - grade: B
+          storage: 128GB
+          price: 27900
+
+    - brand: Samsung
+      model: Galaxy A52
+      popularity_weight: 0.04
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 27900
+        - grade: B
+          storage: 128GB
+          price: 24900
+
+    - brand: Samsung
+      model: Galaxy A34
+      popularity_weight: 0.03
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 25900
+        - grade: B
+          storage: 128GB
+          price: 22900
+
+    - brand: Samsung
+      model: Galaxy A33
+      popularity_weight: 0.02
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 22900
+        - grade: B
+          storage: 128GB
+          price: 20900
+
+    # Google Pixels
+    - brand: Google
+      model: Pixel 7
+      popularity_weight: 0.03
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 47900
+        - grade: B
+          storage: 128GB
+          price: 43900
+
+    - brand: Google
+      model: Pixel 6
+      popularity_weight: 0.02
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 39900
+        - grade: B
+          storage: 128GB
+          price: 35900
+
+    # Xiaomi / OnePlus (smaller shares in refurbished)
+    - brand: Xiaomi
+      model: Redmi Note 12
+      popularity_weight: 0.03
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 22900
+        - grade: B
+          storage: 128GB
+          price: 19900
+
+    - brand: OnePlus
+      model: OnePlus 9
+      popularity_weight: 0.01
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 34900
+        - grade: B
+          storage: 128GB
+          price: 31900
+
+  laptops:
+    - brand: Apple
+      model: MacBook Air M1 (13)
+      popularity_weight: 0.16
+      variants:
+        - grade: A
+          storage: 256GB
+          price: 99900
+        - grade: B
+          storage: 256GB
+          price: 89900
+        - grade: C
+          storage: 256GB
+          price: 82900
+
+    - brand: Apple
+      model: MacBook Air M2 (13)
+      popularity_weight: 0.07
+      variants:
+        - grade: A
+          storage: 256GB
+          price: 119900
+        - grade: B
+          storage: 256GB
+          price: 109900
+
+    - brand: Apple
+      model: MacBook Pro 13 M1
+      popularity_weight: 0.05
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 129900
+        - grade: B
+          storage: 512GB
+          price: 119900
+
+    - brand: Apple
+      model: MacBook Pro 14 (M1 Pro)
+      popularity_weight: 0.04
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 169900
+        - grade: B
+          storage: 512GB
+          price: 159900
+
+    - brand: Lenovo
+      model: ThinkPad X1 Carbon
+      popularity_weight: 0.03
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 119900
+        - grade: B
+          storage: 512GB
+          price: 109900
+
+    - brand: Dell
+      model: XPS 13
+      popularity_weight: 0.03
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 119900
+        - grade: B
+          storage: 512GB
+          price: 109900
+
+    - brand: HP
+      model: Pavilion 15
+      popularity_weight: 0.02
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 74900
+        - grade: B
+          storage: 512GB
+          price: 67900
+
+    - brand: Asus
+      model: VivoBook 14
+      popularity_weight: 0.02
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 69900
+        - grade: B
+          storage: 512GB
+          price: 63900
+
+    - brand: Acer
+      model: Aspire 5
+      popularity_weight: 0.02
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 64900
+        - grade: B
+          storage: 512GB
+          price: 59900
+
+    - brand: Lenovo
+      model: IdeaPad 3
+      popularity_weight: 0.02
+      variants:
+        - grade: A
+          storage: 512GB
+          price: 59900
+        - grade: B
+          storage: 512GB
+          price: 54900
+
+  tablets:
+    - brand: Apple
+      model: iPad 9th Gen
+      popularity_weight: 0.10
+      variants:
+        - grade: A
+          storage: 64GB
+          price: 31900
+        - grade: B
+          storage: 64GB
+          price: 28900
+
+    - brand: Apple
+      model: iPad 10th Gen
+      popularity_weight: 0.06
+      variants:
+        - grade: A
+          storage: 64GB
+          price: 38900
+        - grade: B
+          storage: 64GB
+          price: 34900
+
+    - brand: Apple
+      model: iPad Air (4th Gen)
+      popularity_weight: 0.05
+      variants:
+        - grade: A
+          storage: 64GB
+          price: 44900
+        - grade: B
+          storage: 64GB
+          price: 40900
+
+    - brand: Apple
+      model: iPad Pro 11 (2021)
+      popularity_weight: 0.03
+      variants:
+        - grade: A
+          storage: 128GB
+          price: 69900
+        - grade: B
+          storage: 128GB
+          price: 64900
+
+  audio:
+    - brand: Apple
+      model: AirPods (2nd Gen)
+      popularity_weight: 0.07
+      variants:
+        - grade: A
+          storage: null
+          price: 10900
+        - grade: B
+          storage: null
+          price: 9900
+
+    - brand: Apple
+      model: AirPods Pro (2nd Gen)
+      popularity_weight: 0.06
+      variants:
+        - grade: A
+          storage: null
+          price: 18900
+        - grade: B
+          storage: null
+          price: 16900
+
+    - brand: Sony
+      model: WH-1000XM4
+      popularity_weight: 0.02
+      variants:
+        - grade: A
+          storage: null
+          price: 21900
+        - grade: B
+          storage: null
+          price: 19900
+
+  accessories:
+    - brand: Apple
+      model: USB-C Charger 20W
+      popularity_weight: 0.10
+      variants:
+        - grade: new
+          storage: null
+          price: 2500
+
+    - brand: Apple
+      model: Lightning Cable
+      popularity_weight: 0.08
+      variants:
+        - grade: new
+          storage: null
+          price: 1900
+
+    - brand: Generic
+      model: USB-C Cable
+      popularity_weight: 0.08
+      variants:
+        - grade: new
+          storage: null
+          price: 1500
+
+    - brand: Generic
+      model: Protective Case
+      popularity_weight: 0.08
+      variants:
+        - grade: new
+          storage: null
+          price: 2000
+
+    - brand: Generic
+      model: Screen Protector
+      popularity_weight: 0.05
+      variants:
+        - grade: new
+          storage: null
+          price: 1200
+
+    - brand: Generic
+      model: USB-C Hub
+      popularity_weight: 0.03
+      variants:
+        - grade: new
+          storage: null
+          price: 2900
+
+    - brand: Anker
+      model: Power Bank 10K
+      popularity_weight: 0.03
+      variants:
+        - grade: new
+          storage: null
+          price: 3900
+
+    - brand: Generic
+      model: MagSafe-Compatible Charger
+      popularity_weight: 0.03
+      variants:
+        - grade: new
+          storage: null
+          price: 3500
