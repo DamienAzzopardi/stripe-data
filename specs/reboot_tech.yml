@@ -1,0 +1,60 @@
+app:
+  project_name: "reboot_tech"
+  currency: "eur"
+  timezone: "Europe/Paris"
+
+catalog:
+  file: "specs/reboot_tech_catalog.yml"
+
+markets:
+  countries:
+    - code: FR
+      weight: 0.60
+    - code: ES
+      weight: 0.25
+    - code: IT
+      weight: 0.15
+
+orders:
+  per_day:
+    min: 90
+    max: 160
+
+  items_per_order:
+    min: 1
+    max: 3
+
+  # Category mix for the *main* item (refurb reality: phones dominate)
+  main_item_category_mix:
+    smartphones: 0.68
+    laptops: 0.17
+    tablets: 0.10
+    audio: 0.05
+
+  # Probability of adding at least one accessory
+  accessory_attach_rate: 0.45
+
+  # If accessories are attached, how many?
+  accessories_per_order:
+    min: 1
+    max: 2
+
+payments:
+  cards:
+    # These are Stripe test tokens; the script turns them into PaymentMethods
+    tokens:
+      visa: tok_visa
+      mastercard: tok_mastercard
+      amex: tok_amex
+      discover: tok_discover
+      jcb: tok_jcb
+
+refunds:
+  refund_rate: 0.08
+  reasons:
+    remorse: 0.55
+    defect: 0.30
+    logistics: 0.15
+
+advanced:
+  deterministic_seed: true
