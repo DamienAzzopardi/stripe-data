@@ -1,0 +1,47 @@
+name: Daily Stripe Fitness Data
+
+on:
+  schedule:
+    # 06:10 Europe/Paris approx = 05:10 UTC in winter, 04:10 UTC in summer.
+    # Keep it simple in UTC; adjust as needed.
+    - cron: "10 5 * * *"
+  workflow_dispatch:
+    inputs:
+      run_date:
+        description: "Optional run date (YYYY-MM-DD). Defaults to today."
+        required: false
+        type: string
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run generator
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          FITNESS_SPEC_PATH: "specs/fitness_app.yml"
+          RUN_DATE: ${{ inputs.run_date }}
+        run: |
+          python scripts/daily_stripe_fitness.py
+
+      - name: Upload state as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stripe-fitness-state
+          path: .state/fitness_state.json
+          if-no-files-found: warn
