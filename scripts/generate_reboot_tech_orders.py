@@ -39,7 +39,6 @@ def sku_key(project: str, category: str, brand: str, model: str, grade: str, sto
 
 
 def stripe_search_one_product_by_sku(sku: str) -> Optional[str]:
-    # Product Search supports metadata queries. If Search isn't enabled, you can replace with list+scan.
     res = stripe.Product.search(query=f"metadata['sku']:'{sku}'", limit=1)
     if res.data:
         return res.data[0].id
@@ -47,7 +46,6 @@ def stripe_search_one_product_by_sku(sku: str) -> Optional[str]:
 
 
 def stripe_search_one_price(product_id: str, sku: str, currency: str, unit_amount: int) -> Optional[str]:
-    # Price search by metadata
     q = (
         f"metadata['sku']:'{sku}' AND "
         f"metadata['currency']:'{currency}' AND "
@@ -146,8 +144,8 @@ def main() -> None:
     catalog = load_yaml(catalog_path)
 
     # deterministic per day if enabled
-    tz_date = dt.date.today().isoformat()
-    seed = stable_seed(f"{project}:{tz_date}") if spec.get("advanced", {}).get("deterministic_seed", False) else None
+    run_date = dt.date.today().isoformat()
+    seed = stable_seed(f"{project}:{run_date}") if spec.get("advanced", {}).get("deterministic_seed", False) else None
     rng = random.Random(seed)
 
     # Flatten catalog to SKUs and build weighted pools by category
@@ -177,7 +175,12 @@ def main() -> None:
     country_items = [(c["code"], float(c["weight"])) for c in countries]
 
     # Cards
-    card_tokens = list(spec["payments"]["cards"]["tokens"].values())
+    cards_cfg = spec["payments"]["cards"]
+    success_tokens = list(cards_cfg["tokens"].values())
+
+    failure_rate = float(cards_cfg.get("failure_rate", 0.0))
+    failure_tokens_map = cards_cfg.get("failure_tokens", {}) or {}
+    failure_types = list(failure_tokens_map.keys())
 
     # Orders per day
     n_orders = rng.randint(int(spec["orders"]["per_day"]["min"]), int(spec["orders"]["per_day"]["max"]))
@@ -196,32 +199,46 @@ def main() -> None:
     items_min = int(spec["orders"]["items_per_order"]["min"])
     items_max = int(spec["orders"]["items_per_order"]["max"])
 
-    created = {"orders": 0, "refunds": 0}
+    created = {
+        "orders_succeeded": 0,
+        "orders_failed": 0,
+        "refunds": 0,
+        "payment_attempts_total": 0,
+    }
 
     for i in range(n_orders):
         country = weighted_choice(rng, country_items)
 
         customer = stripe.Customer.create(
-            email=f"{project}.{tz_date.replace('-','')}.{i}@example.com",
+            email=f"{project}.{run_date.replace('-','')}.{i}@example.com",
             address={"country": country},
-            metadata={"project": project, "run_date": tz_date, "country": country},
+            metadata={"project": project, "run_date": run_date, "country": country},
         )
 
-        token = rng.choice(card_tokens)
+        # Decide whether this payment attempt will fail
+        use_failure = bool(failure_types) and (rng.random() < failure_rate)
+        if use_failure:
+            failure_type = rng.choice(failure_types)
+            token = failure_tokens_map[failure_type]
+        else:
+            failure_type = "success"
+            token = rng.choice(success_tokens)
+
+        # Create & attach payment method
         pm = stripe.PaymentMethod.create(type="card", card={"token": token})
         stripe.PaymentMethod.attach(pm.id, customer=customer.id)
         stripe.Customer.modify(customer.id, invoice_settings={"default_payment_method": pm.id})
 
-        # choose main item category (phones/laptops/tablets/audio)
+        # Choose main item category (phones/laptops/tablets/audio)
         main_cat = weighted_choice(rng, main_cat_items)
         pool = by_cat[main_cat]
 
-        # weighted sku sampling: family_weight dominates
+        # Weighted SKU sampling: family_weight dominates
         main_sku = weighted_choice(rng, [(s, float(s["family_weight"])) for s in pool])
 
         line_items = [main_sku]
 
-        # optionally attach accessories
+        # Optionally attach accessories
         if rng.random() < accessory_attach_rate:
             n_acc = rng.randint(acc_min, acc_max)
             acc_pool = by_cat.get("accessories", [])
@@ -230,9 +247,8 @@ def main() -> None:
                     acc_sku = weighted_choice(rng, [(s, float(s["family_weight"])) for s in acc_pool])
                     line_items.append(acc_sku)
 
-        # ensure items_per_order bounds overall
+        # Ensure items_per_order bounds overall
         while len(line_items) < items_min:
-            # add accessory if needed
             acc_pool = by_cat.get("accessories", [])
             if not acc_pool:
                 break
@@ -251,35 +267,52 @@ def main() -> None:
             categories.append(s["category"])
             amount += int(s["price"])
 
+        created["payment_attempts_total"] += 1
+
+        # IMPORTANT:
+        # Create PI first (confirm=False) so even if confirmation fails,
+        # the PaymentIntent still exists in Stripe (great for analytics).
         pi = stripe.PaymentIntent.create(
             customer=customer.id,
             amount=amount,
             currency=currency,
             payment_method=pm.id,
-            confirm=True,
+            confirm=False,
             automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
             metadata={
                 "project": project,
-                "run_date": tz_date,
+                "run_date": run_date,
                 "country": country,
                 "item_count": str(len(line_items)),
-                "sku_keys": ",".join(sku_list[:30]),  # keep metadata small
+                "sku_keys": ",".join(sku_list[:30]),
                 "categories": ",".join(categories[:30]),
+                "attempt_expected": "failed" if use_failure else "succeeded",
+                "failure_type": failure_type,
             },
         )
 
-        created["orders"] += 1
-
-        # refund some orders
-        if rng.random() < refund_rate:
-            reason = weighted_choice(rng, refund_reasons)
-            stripe.Refund.create(
-                payment_intent=pi.id,
-                metadata={"project": project, "run_date": tz_date, "reason": reason},
+        try:
+            stripe.PaymentIntent.confirm(
+                pi.id,
+                payment_method=pm.id,
             )
-            created["refunds"] += 1
+            created["orders_succeeded"] += 1
 
-    print(json.dumps({"project": project, "run_date": tz_date, **created}, indent=2))
+            # Refund some successful orders
+            if rng.random() < refund_rate:
+                reason = weighted_choice(rng, refund_reasons)
+                stripe.Refund.create(
+                    payment_intent=pi.id,
+                    metadata={"project": project, "run_date": run_date, "reason": reason},
+                )
+                created["refunds"] += 1
+
+        except stripe.error.CardError:
+            # Confirmation failed (decline). PI remains in Stripe with failure status.
+            created["orders_failed"] += 1
+            continue
+
+    print(json.dumps({"project": project, "run_date": run_date, **created}, indent=2))
 
 
 if __name__ == "__main__":
