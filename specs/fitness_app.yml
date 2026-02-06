@@ -1,84 +1,96 @@
-# specs/fitness_app.yml
 app:
   name: "DAH Fitness App"
-  currency: "eur"
   timezone: "Europe/Paris"
 
-catalog:
-  products:
-    - key: "membership"
-      name: "Fitness Membership"
-      prices:
-        - key: "monthly"
-          nickname: "Membership Monthly"
-          unit_amount: 1999     # €19.99
-          interval: "month"
-          trial_days: 7
-        - key: "yearly"
-          nickname: "Membership Yearly"
-          unit_amount: 17999    # €179.99
-          interval: "year"
-          trial_days: 14
+markets:
+  countries:
+    - code: "FR"
+      name: "France"
+      currency: "eur"
+      weight: 0.45
+    - code: "ES"
+      name: "Spain"
+      currency: "eur"
+      weight: 0.25
+    - code: "IT"
+      name: "Italy"
+      currency: "eur"
+      weight: 0.20
+    - code: "US"
+      name: "United States"
+      currency: "usd"
+      weight: 0.10
 
-    - key: "coaching"
-      name: "1:1 Coaching Add-on"
-      prices:
-        - key: "monthly"
-          nickname: "Coaching Monthly"
-          unit_amount: 4999     # €49.99
-          interval: "month"
-          trial_days: 0
+plans:
+  weekly:
+    interval: "week"
+    interval_count: 1
+    eur_unit_amount: 699
+    usd_unit_amount: 699
+    churn_probability: 0.25
 
-  coupons:
-    - key: "WELCOME10"
-      percent_off: 10
-      duration: "once"
-    - key: "ANNUAL15"
-      percent_off: 15
-      duration: "repeating"
-      duration_in_months: 12
+  monthly:
+    interval: "month"
+    interval_count: 1
+    eur_unit_amount: 1999
+    usd_unit_amount: 1999
+    churn_probability: 0.08
 
-data_generation:
-  # How many NEW users per day (roughly)
+  yearly:
+    interval: "year"
+    interval_count: 1
+    eur_unit_amount: 17999
+    usd_unit_amount: 17999
+    churn_probability: 0.15
+
+upgrades:
+  weekly_to_monthly:
+    from: "weekly"
+    to: "monthly"
+    eligible_after_completed_cycles: 1
+    probability: 0.20
+
+  monthly_to_yearly:
+    from: "monthly"
+    to: "yearly"
+    eligible_after_completed_cycles: 2
+    probability: 0.12
+
+daily_generation:
   new_customers_per_day:
-    mean: 120
-    std: 25
-    min: 50
-    max: 220
+    min: 100
+    max: 150
 
-  # How users split across plan types
-  plan_mix:
-    membership_monthly: 0.78
-    membership_yearly: 0.22
+  plan_allocation_ranges:
+    weekly:
+      min: 0.35
+      max: 0.55
+    monthly:
+      min: 0.25
+      max: 0.40
+    yearly:
+      min: 0.10
+      max: 0.25
 
-  # Add-on attachment rate (coaching)
-  coaching_attach_rate: 0.12
+payment_methods:
+  cards:
+    distribution:
+      visa: 0.40
+      mastercard: 0.30
+      amex: 0.12
+      discover: 0.10
+      jcb: 0.08
+    stripe_test_tokens:
+      visa: "tok_visa"
+      mastercard: "tok_mastercard"
+      amex: "tok_amex"
+      discover: "tok_discover"
+      jcb: "tok_jcb"
 
-  # Discount usage
-  coupon_usage_rate: 0.18
-  coupon_distribution:
-    WELCOME10: 0.75
-    ANNUAL15: 0.25
-
-  # Payment outcomes
-  payment_failure_rate: 0.04     # create invoices that fail (simulated by leaving default PM missing)
-  refund_rate: 0.015             # refund some one-off charges
-
-  # Churn (cancel subscriptions)
-  daily_churn_rate:
-    monthly: 0.0025
-    yearly: 0.0006
-
-  # One-off purchases (e.g., “programs”, “merch”, etc.)
-  one_off_purchases_per_day:
-    mean: 25
-    std: 8
-    min: 5
-    max: 60
-  one_off_basket:
-    min_amount: 990     # €9.90
-    max_amount: 8990    # €89.90
+stripe:
+  product:
+    key: "fitness_membership"
+    name: "Fitness Membership"
 
 advanced:
-  # Make runs deterministic day-to-day (good for teaching + reproducibility)
   deterministic_seed: true
