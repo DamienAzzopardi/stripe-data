@@ -49,6 +49,13 @@ payments:
       discover: tok_discover
       jcb: tok_jcb
 
+    failure_rate: 0.06   # 6% payment attempts fail
+
+    failure_tokens:
+      insufficient_funds: tok_chargeDeclinedInsufficientFunds
+      generic_decline: tok_chargeDeclined
+      stolen_card: tok_chargeDeclinedStolenCard
+
 refunds:
   refund_rate: 0.08
   reasons:
