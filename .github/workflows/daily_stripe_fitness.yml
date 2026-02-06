@@ -33,7 +33,7 @@ jobs:
 
       - name: Run generator
         env:
-          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           FITNESS_SPEC_PATH: "specs/fitness_app.yml"
           RUN_DATE: ${{ inputs.run_date }}
         run: |
