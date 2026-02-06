@@ -265,10 +265,13 @@ def create_subscription(customer_id: str, price_id: str, trial_days: int, coupon
         "items": [{"price": price_id}],
         "metadata": {"generator": "dah_fitness", "run_date": run_date, "daily_idx": str(idx)},
     }
+
     if trial_days and trial_days > 0:
         params["trial_period_days"] = int(trial_days)
+
+    # ✅ Stripe now prefers discounts=[{coupon: ...}] over coupon=...
     if coupon_id:
-        params["coupon"] = coupon_id
+        params["discounts"] = [{"coupon": coupon_id}]
 
     sub = stripe.Subscription.create(
         **params,
