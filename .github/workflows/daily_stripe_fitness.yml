@@ -3,7 +3,6 @@ app:
   timezone: "Europe/Paris"
 
 markets:
-  # As per specs: France, Spain, Italy, United States  [oai_citation:2‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
   countries:
     - code: "FR"
       name: "France"
@@ -23,33 +22,34 @@ markets:
       weight: 0.10
 
 plans:
-  # Prices and billing periodicity as per specs  [oai_citation:3‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
   weekly:
     interval: "week"
     interval_count: 1
-    eur_unit_amount: 699    # 6.99€
-    usd_unit_amount: 699    # assumption: same numeric in USD, configurable
-    churn_probability: 0.25  # 25% per week  [oai_citation:4‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
+    eur_unit_amount: 699
+    usd_unit_amount: 699
+    churn_probability: 0.25
+
   monthly:
     interval: "month"
     interval_count: 1
-    eur_unit_amount: 1999   # 19.99€
-    usd_unit_amount: 1999   # assumption: same numeric in USD, configurable
-    churn_probability: 0.08  # 8% per month  [oai_citation:5‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
+    eur_unit_amount: 1999
+    usd_unit_amount: 1999
+    churn_probability: 0.08
+
   yearly:
     interval: "year"
     interval_count: 1
-    eur_unit_amount: 17999  # 179.99€
-    usd_unit_amount: 17999  # assumption: same numeric in USD, configurable
-    churn_probability: 0.15  # 15% per year  [oai_citation:6‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
+    eur_unit_amount: 17999
+    usd_unit_amount: 17999
+    churn_probability: 0.15
 
 upgrades:
-  # Upgrade rules and eligibility as per specs  [oai_citation:7‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
   weekly_to_monthly:
     from: "weekly"
     to: "monthly"
     eligible_after_completed_cycles: 1
     probability: 0.20
+
   monthly_to_yearly:
     from: "monthly"
     to: "yearly"
@@ -57,19 +57,22 @@ upgrades:
     probability: 0.12
 
 daily_generation:
-  # Specs: 100–150 new customers/day  [oai_citation:8‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
   new_customers_per_day:
     min: 100
     max: 150
 
-  # Specs: each day select a valid distribution within ranges that sums to 100%  [oai_citation:9‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
   plan_allocation_ranges:
-    weekly: { min: 0.35, max: 0.55 }
-    monthly: { min: 0.25, max: 0.40 }
-    yearly: { min: 0.10, max: 0.25 }
+    weekly:
+      min: 0.35
+      max: 0.55
+    monthly:
+      min: 0.25
+      max: 0.40
+    yearly:
+      min: 0.10
+      max: 0.25
 
 payment_methods:
-  # Card networks as per specs  [oai_citation:10‡e9840e76-2ffd-40cc-9538-bf89a19c0cb7_Fitness_App_Business_Model_Specs_(B2C).pdf](sediment://file_00000000ba00720a8f3e3c679360ff75)
   cards:
     distribution:
       visa: 0.40
@@ -77,6 +80,7 @@ payment_methods:
       amex: 0.12
       discover: 0.10
       jcb: 0.08
+
     stripe_test_tokens:
       visa: "tok_visa"
       mastercard: "tok_mastercard"
