@@ -1,97 +1,45 @@
-app:
-  name: "DAH Fitness App"
-  timezone: "Europe/Paris"
+name: Daily Stripe Fitness Data
 
-markets:
-  countries:
-    - code: "FR"
-      name: "France"
-      currency: "eur"
-      weight: 0.45
-    - code: "ES"
-      name: "Spain"
-      currency: "eur"
-      weight: 0.25
-    - code: "IT"
-      name: "Italy"
-      currency: "eur"
-      weight: 0.20
-    - code: "US"
-      name: "United States"
-      currency: "usd"
-      weight: 0.10
+on:
+  schedule:
+    - cron: "10 5 * * *"
+  workflow_dispatch:
+    inputs:
+      run_date:
+        description: "Optional run date (YYYY-MM-DD)"
+        required: false
+        type: string
 
-plans:
-  weekly:
-    interval: "week"
-    interval_count: 1
-    eur_unit_amount: 699
-    usd_unit_amount: 699
-    churn_probability: 0.25
+jobs:
+  generate:
+    runs-on: ubuntu-latest
 
-  monthly:
-    interval: "month"
-    interval_count: 1
-    eur_unit_amount: 1999
-    usd_unit_amount: 1999
-    churn_probability: 0.08
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-  yearly:
-    interval: "year"
-    interval_count: 1
-    eur_unit_amount: 17999
-    usd_unit_amount: 17999
-    churn_probability: 0.15
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-upgrades:
-  weekly_to_monthly:
-    from: "weekly"
-    to: "monthly"
-    eligible_after_completed_cycles: 1
-    probability: 0.20
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
 
-  monthly_to_yearly:
-    from: "monthly"
-    to: "yearly"
-    eligible_after_completed_cycles: 2
-    probability: 0.12
+      - name: Validate YAML spec
+        run: |
+          python - << 'PY'
+          import yaml
+          with open("specs/fitness_app.yml", "r") as f:
+              yaml.safe_load(f)
+          print("fitness_app.yml OK")
+          PY
 
-daily_generation:
-  new_customers_per_day:
-    min: 100
-    max: 150
-
-  plan_allocation_ranges:
-    weekly:
-      min: 0.35
-      max: 0.55
-    monthly:
-      min: 0.25
-      max: 0.40
-    yearly:
-      min: 0.10
-      max: 0.25
-
-payment_methods:
-  cards:
-    distribution:
-      visa: 0.40
-      mastercard: 0.30
-      amex: 0.12
-      discover: 0.10
-      jcb: 0.08
-
-    stripe_test_tokens:
-      visa: "tok_visa"
-      mastercard: "tok_mastercard"
-      amex: "tok_amex"
-      discover: "tok_discover"
-      jcb: "tok_jcb"
-
-stripe:
-  product:
-    key: "fitness_membership"
-    name: "Fitness Membership"
-
-advanced:
-  deterministic_seed: true
+      - name: Run Stripe generator
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          FITNESS_SPEC_PATH: specs/fitness_app.yml
+          RUN_DATE: ${{ inputs.run_date }}
+        run: |
+          python scripts/daily_stripe_fitness.py
