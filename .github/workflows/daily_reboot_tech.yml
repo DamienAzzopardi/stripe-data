@@ -1,19 +1,18 @@
-name: Daily Stripe Fitness Data
+name: Daily Reboot Tech Data
 
 on:
-  schedule:
-    - cron: "10 5 * * *"
   workflow_dispatch:
     inputs:
       run_date:
-        description: "Optional run date (YYYY-MM-DD)"
+        description: "Optional run date (YYYY-MM-DD) - informational only in V1"
         required: false
         type: string
+  schedule:
+    - cron: "20 6 * * *"
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -23,23 +22,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install deps
         run: |
           pip install -r requirements.txt
 
-      - name: Validate YAML spec
+      - name: Validate YAML
         run: |
           python - << 'PY'
           import yaml
-          with open("specs/fitness_app.yml", "r") as f:
-              yaml.safe_load(f)
-          print("fitness_app.yml OK")
+          yaml.safe_load(open("specs/reboot_tech.yml","r",encoding="utf-8"))
+          yaml.safe_load(open("specs/reboot_tech_catalog.yml","r",encoding="utf-8"))
+          print("YAML OK")
           PY
 
-      - name: Run Stripe generator
+      - name: Run generator
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          FITNESS_SPEC_PATH: specs/fitness_app.yml
-          RUN_DATE: ${{ inputs.run_date }}
+          REBOOT_SPEC_PATH: specs/reboot_tech.yml
         run: |
-          python scripts/daily_stripe_fitness.py
+          python scripts/generate_reboot_tech_orders.py
